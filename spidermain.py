@@ -1,21 +1,25 @@
 import sys
 import threading
+import re
 
 import requests
 from bs4 import BeautifulSoup
 
 TO_CRAWL = []
 CRAWLED = set()
+EMAILS = set()
+
+
+def find_emails(parsed_html):
+    emails = re.findall(r'\w[\w\.]+\w@\w[\w\.]+\.[\w\.]+\w', parsed_html.text)
+    for email in emails:
+        if email not in EMAILS:
+            EMAILS.add(email)
+
 
 def crawl(target):
-    header = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                            "Chrome/101.0.4951.67 Safari/537.36",
-              "Cookie": "cf_clearance=3B5_SSLzPKu8YX1dbOdbYMcBsTE3HTnq5SsfIKuEWF0-1653494424-0-150",
-              "Referer": "http://www.bancocn.com/?__cf_chl_tk=LXUCI3v4NxLReGFBSRj2ZKCI.fC4Ogn_SDwm6U6kMZY-1653494422-0-gaNycGzNA_0",
-              "Origin": "http://www.bancocn.com",
-              "Host": "www.bancocn.com"}
     try:
-        answer = requests.get(target, headers=header)
+        answer = requests.get(target)
     except Exception as error:
         print('Unexpected error ', error)
         CRAWLED.add(target)
@@ -23,6 +27,7 @@ def crawl(target):
 
     if answer:
         parsed_html = BeautifulSoup(answer.text, 'html.parser')
+        find_emails(parsed_html)
         atags = parsed_html.find_all('a', href=True)
 
         if atags:
@@ -54,8 +59,10 @@ def main():
         for thread in threads:
             thread.join()
 
-        print(TO_CRAWL)
+        print(EMAILS)
+
+    print(CRAWLED)
 
 
 if __name__ == '__main__':
-    main()
+   main()
